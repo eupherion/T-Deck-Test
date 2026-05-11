@@ -71,6 +71,12 @@ You can upload the assets contents for the speaker demo, using the "Upload Files
 5. fatal error: esp_vad.h: No such file or directory
    1. See [issus](https://github.com/Xinyuan-LilyGO/T-Deck/issues/90#issuecomment-2980116659)
 
+6. Grove interface model?
+   * HY2.0-4P
+
+   ![](./images/HY2.0-4P.png)
+
+
 ## 4️⃣ Where to buy:
 
 1. [AliExpress](https://www.aliexpress.com/item/1005005692235592.html)
