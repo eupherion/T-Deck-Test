@@ -164,7 +164,6 @@ extern void setupUI(void);
 bool setupGPS()
 {
     SerialGPS.begin(9600, SERIAL_8N1, BOARD_GPS_RX_PIN, BOARD_GPS_TX_PIN);
-
     bool result = false;
     uint32_t startTimeout ;
     for (int i = 0; i < 3; ++i) {
@@ -174,11 +173,10 @@ bool setupGPS()
         startTimeout = millis() + 3000;
         Serial.print("Try to init L76K . Wait stop .");
         while (SerialGPS.available()) {
-            Serial.print(".");
-            SerialGPS.readString();
+            SerialGPS.read();
             if (millis() > startTimeout) {
-                Serial.println("Wait L76K stop NMEA timeout!");
-                return false;
+                Serial.println("Wait L76K stop NMEA timeout,retry again!");
+                break;
             }
         };
         Serial.println();
@@ -190,8 +188,8 @@ bool setupGPS()
         String ver = "";
         while (!SerialGPS.available()) {
             if (millis() > startTimeout) {
-                Serial.println("Get L76K timeout!");
-                return false;
+                Serial.println("Get L76K Info timeout!");
+                break;
             }
         }
         SerialGPS.setTimeout(10);
@@ -208,7 +206,9 @@ bool setupGPS()
     SerialGPS.write("$PCAS04,5*1C\r\n");
     delay(250);
     // only ask for RMC and GGA
-    SerialGPS.write("$PCAS03,1,0,0,0,1,0,0,0,0,0,,,0,0*02\r\n");
+    // SerialGPS.write("$PCAS03,1,0,0,0,1,0,0,0,0,0,,,0,0*02\r\n");
+    // All nmea message output
+    SerialGPS.write("$PCAS03,1,1,1,1,1,1,1,1,1,1,,,0,0*02\r\n");
     delay(250);
     // Switch to Vehicle Mode, since SoftRF enables Aviation < 2g
     SerialGPS.write("$PCAS11,3*1E\r\n");
@@ -1034,8 +1034,10 @@ void setup()
 
     setupWiFi();
 
-    if (!setupGPS()) {
-        SerialGPS.begin(38400, SERIAL_8N1, BOARD_GPS_RX_PIN, BOARD_GPS_TX_PIN);
+    bool foundGPS = false;
+    foundGPS = setupGPS();
+    if (!foundGPS) {
+        SerialGPS.updateBaudRate(38400);
         uint32_t baudrate[] = {38400, 115200, 9600};
         // Restore factory settings
         for (int i = 0; i < 3; ++i) {
@@ -1043,10 +1045,16 @@ void setup()
             if (GPS_Recovery()) {
                 Serial.println("UBlox-M10Q GNSS init succeeded, using UBlox-M10Q GNSS Module\n");
                 gps_model = "UBlox-M10";
+                foundGPS = true;
                 break;
             }
             Serial.printf("Update baudrate : %u\n", baudrate[i]);
             SerialGPS.updateBaudRate(baudrate[i]);
+        }
+
+        if (!foundGPS) {
+            SerialGPS.updateBaudRate(9600);
+            Serial.println("Failed to initialize GPS,reinit serial baud to 9600.");
         }
     }
 
