@@ -17,6 +17,7 @@
  *                  USB Mode:"Hardware CDC and JTAG"
  */
 #include <Arduino.h>
+#include <FFat.h>
 #include <SPI.h>
 #include <RadioLib.h>
 #include <TFT_eSPI.h>
@@ -462,10 +463,15 @@ bool setupCoder()
 
 void taskPlaySong(void *p)
 {
-    while (1) {
-        if ( xSemaphoreTake( xSemaphore, portMAX_DELAY ) == pdTRUE ) {
+    while (1)
+    {
+        Serial.println("[PLAY] Taking semaphore...");
+        if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE)
+        {
+            Serial.println("[PLAY] Semaphore taken, starting playback");
             playTTS("hello.mp3");
-            xSemaphoreGive( xSemaphore );
+            Serial.println("[PLAY] Playback done, giving semaphore");
+            xSemaphoreGive(xSemaphore);
         }
         vTaskSuspend(NULL);
     }
@@ -771,21 +777,52 @@ void setupMicrophoneI2S(i2s_port_t  i2s_ch)
 
 }
 
-
 void playTTS(const char *filename)
 {
     bool findMp3 = false;
-    if (SD.exists("/" + String(filename))) {
+    Serial.printf("[PLAY] Looking for %s\n", filename);
+
+    if (SD.exists("/" + String(filename)))
+    {
+        Serial.println("[PLAY] Found on SD");
         findMp3 = audio.connecttoFS(SD, filename);
-    } else if (SPIFFS.exists("/" + String(filename))) {
-        findMp3 = audio.connecttoFS(SPIFFS, filename);
     }
-    if (findMp3) {
-        while (audio.isRunning()) {
-            audio.loop();
-            delay(3);
+    else if (FFat.exists("/" + String(filename)))
+    {
+        Serial.println("[PLAY] Found on FFat");
+        findMp3 = audio.connecttoFS(FFat, filename);
+    }
+    else
+    {
+        Serial.println("[PLAY] File not found!");
+        return;
+    }
+
+    if (!findMp3)
+    {
+        Serial.println("[PLAY] connecttoFS failed!");
+        return;
+    }
+
+    Serial.println("[PLAY] Starting audio.loop()");
+    uint32_t startMs = millis();
+    uint32_t timeoutMs = 5000; // максимум 5 секунд на воспроизведение
+
+    while (audio.isRunning())
+    {
+        audio.loop();
+        delay(3);
+
+        // Принудительный выход по таймауту
+        if (millis() - startMs > timeoutMs)
+        {
+            Serial.println("[PLAY] TIMEOUT! Stopping audio");
+            audio.stopSong(); // или audio.pause(); audio.setVolume(0);
+            break;
         }
     }
+
+    Serial.println("[PLAY] audio.loop() finished");
 }
 
 void setupAmpI2S(i2s_port_t  i2s_ch)
@@ -956,8 +993,8 @@ void setup()
         delay(30);
     }
 
-
-    SPIFFS.begin();
+    // SPIFFS.begin();
+    FFat.begin();
 
     setupSD();
 
@@ -1065,7 +1102,14 @@ void setup()
 
     setupUI();
 
+    //playTTS("hello.mp3");
     xTaskCreate(taskPlaySong, "play", 1024 * 4, NULL, 10, &playHandle);
+    
+    Serial.println("WiFi SSID: [" + String(WIFI_SSID) + "]");
+    Serial.println("WiFi Password: [" + String(WIFI_PASSWORD) + "]");
+    if (WiFi.isConnected()) {
+        Serial.printf("WLAN ip : %s\n", WiFi.localIP().toString().c_str());
+    }
 }
 
 void loop()

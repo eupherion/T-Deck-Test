@@ -428,15 +428,25 @@ void setupUI(void)
 
     const char *wifi_ip = "N.A";
     lv_obj_t *label =    create_label(section, NULL, "IP", wifi_ip);
-    lv_msg_subsribe_obj(_BV(1), label, NULL);
-    lv_obj_add_event_cb( label, [](lv_event_t *e) {
-        lv_obj_t *label = (lv_obj_t *)lv_event_get_target(e);
-        if (WiFi.isConnected()) {
-            lv_label_set_text_fmt(label, "%s", (WiFi.localIP().toString().c_str()));
-        } else {
-            lv_label_set_text(label, "N.A");
-        }
-    }, LV_EVENT_MSG_RECEIVED, NULL);
+    
+    // lv_msg_subsribe_obj(_BV(1), label, NULL);
+    // lv_obj_add_event_cb( label, [](lv_event_t *e) {
+    //     lv_obj_t *label = (lv_obj_t *)lv_event_get_target(e);
+    //     if (WiFi.isConnected()) {
+    //         lv_label_set_text_fmt(label, "%s", (WiFi.localIP().toString().c_str()));
+    //     } else {
+    //         lv_label_set_text(label, "N.A");
+    //     }
+    // }, LV_EVENT_MSG_RECEIVED, NULL);
+
+    lv_timer_create([](lv_timer_t *t)
+                    {
+    lv_obj_t *label = (lv_obj_t *)t->user_data;
+    if (WiFi.isConnected()) {
+        lv_label_set_text_fmt(label, "%s", WiFi.localIP().toString().c_str());
+    } else {
+        lv_label_set_text(label, "N.A");
+    } }, 3000, label);
 
     const char *wifi_rssi = "N.A";
     lv_obj_t *wifi_rssi_label =  create_label(section, NULL, "RSSI", wifi_rssi);
