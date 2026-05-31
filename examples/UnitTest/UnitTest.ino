@@ -465,12 +465,9 @@ void taskPlaySong(void *p)
 {
     while (1)
     {
-        Serial.println("[PLAY] Taking semaphore...");
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE)
         {
-            Serial.println("[PLAY] Semaphore taken, starting playback");
             playTTS("hello.mp3");
-            Serial.println("[PLAY] Playback done, giving semaphore");
             xSemaphoreGive(xSemaphore);
         }
         vTaskSuspend(NULL);
@@ -780,21 +777,17 @@ void setupMicrophoneI2S(i2s_port_t  i2s_ch)
 void playTTS(const char *filename)
 {
     bool findMp3 = false;
-    Serial.printf("[PLAY] Looking for %s\n", filename);
 
     if (SD.exists("/" + String(filename)))
     {
-        Serial.println("[PLAY] Found on SD");
         findMp3 = audio.connecttoFS(SD, filename);
     }
     else if (FFat.exists("/" + String(filename)))
     {
-        Serial.println("[PLAY] Found on FFat");
         findMp3 = audio.connecttoFS(FFat, filename);
     }
     else
     {
-        Serial.println("[PLAY] File not found!");
         return;
     }
 
@@ -804,7 +797,6 @@ void playTTS(const char *filename)
         return;
     }
 
-    Serial.println("[PLAY] Starting audio.loop()");
     uint32_t startMs = millis();
     uint32_t timeoutMs = 5000; // максимум 5 секунд на воспроизведение
 
@@ -821,8 +813,6 @@ void playTTS(const char *filename)
             break;
         }
     }
-
-    Serial.println("[PLAY] audio.loop() finished");
 }
 
 void setupAmpI2S(i2s_port_t  i2s_ch)
